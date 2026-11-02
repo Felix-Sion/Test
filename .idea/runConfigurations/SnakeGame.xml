@@ -1,0 +1,9 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="SnakeGame" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="snake.SnakeGame" />
+    <module name="SnakeGame" />
+    <option name="VM_PARAMETERS" value="-Dsnake.home=&quot;$PROJECT_DIR$&quot;" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+    <method v="2"><option name="Make" enabled="true" /></method>
+  </configuration>
+</component>

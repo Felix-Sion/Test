@@ -1,0 +1,14 @@
+/out/
+/dist/
+/data/
+/*.jar
+/*.mp3
+*.class
+/.idea/*
+!/.idea/encodings.xml
+!/.idea/misc.xml
+!/.idea/modules.xml
+!/.idea/runConfigurations/
+/.idea/runConfigurations/*
+!/.idea/runConfigurations/SnakeGame.xml
+*.log
