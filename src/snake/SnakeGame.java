@@ -28,12 +28,16 @@ public final class SnakeGame extends JPanel {
     private final JLabel status = label("", 12, MUTED);
     private final JButton play = new ArcadeButton("开始游戏", true);
     private final JButton restart = new ArcadeButton("重新开始", false);
+    private final JButton musicToggle = new ArcadeButton("音乐：开", false);
     private final JComboBox<Difficulty> speed = new JComboBox<>(Difficulty.values());
     private final Board board = new Board();
     private final Timer timer;
+    private final BackgroundMusic music;
+    private boolean windowFocused;
     private SnakeGame(Path home) {
         scores = new ScoreBoard(home);
         session = new GameSession(game, scores);
+        music = new BackgroundMusic(() -> SwingUtilities.invokeLater(this::refreshMusicButton));
         setBackground(BACKGROUND);
         setBorder(BorderFactory.createEmptyBorder(22, 24, 20, 24));
         setLayout(new BorderLayout(0, 18));
@@ -45,6 +49,7 @@ public final class SnakeGame extends JPanel {
         timer.setCoalesce(true);
         play.addActionListener(event -> togglePlay());
         restart.addActionListener(event -> newGame());
+        musicToggle.addActionListener(event -> toggleMusic());
         speed.addActionListener(event -> {
             Difficulty selected = (Difficulty) speed.getSelectedItem();
             if (!session.setDifficulty(selected) && selected != session.difficulty()) {
@@ -70,16 +75,22 @@ public final class SnakeGame extends JPanel {
             window.pack();
             window.setLocationRelativeTo(null);
             window.addWindowFocusListener(new WindowAdapter() {
+                @Override public void windowGainedFocus(WindowEvent event) {
+                    content.windowFocused = true;
+                    content.refreshMusicPlayback();
+                }
                 @Override public void windowLostFocus(WindowEvent event) {
+                    content.windowFocused = false;
                     if (content.game.state() == GameModel.State.RUNNING) {
                         content.session.togglePlay();
-                        content.refresh();
                     }
+                    content.refresh();
                 }
             });
             window.addWindowListener(new WindowAdapter() {
                 @Override public void windowClosing(WindowEvent event) {
                     content.session.finishRound();
+                    content.music.close();
                 }
             });
             window.setVisible(true);
@@ -169,13 +180,14 @@ public final class SnakeGame extends JPanel {
         left.add(speed);
         actions.add(left, BorderLayout.WEST);
         JPanel buttons = transparent(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        buttons.add(musicToggle);
         buttons.add(restart);
         buttons.add(play);
         actions.add(buttons, BorderLayout.EAST);
         footer.add(actions, BorderLayout.NORTH);
 
         JPanel help = transparent(new GridLayout(2, 1, 0, 5));
-        help.add(label("方向键 / WASD 移动     ·     空格 暂停     ·     Enter 开始     ·     R 重开", 12, MUTED));
+        help.add(label("方向键 / WASD 移动   ·   空格 暂停   ·   Enter 开始   ·   R 重开   ·   M 音乐", 12, MUTED));
         help.add(status);
         footer.add(help, BorderLayout.SOUTH);
         return footer;
@@ -193,6 +205,7 @@ public final class SnakeGame extends JPanel {
         bind("SPACE", this::togglePlay);
         bind("ENTER", this::togglePlay);
         bind("R", this::newGame);
+        bind("M", this::toggleMusic);
     }
 
     private void bind(String key, Runnable action) {
@@ -221,6 +234,24 @@ public final class SnakeGame extends JPanel {
     private void advance() {
         session.tick();
         refresh();
+    }
+
+    private void toggleMusic() {
+        music.setEnabled(!music.isEnabled());
+        refreshMusicButton();
+    }
+
+    private void refreshMusicPlayback() {
+        music.setPlaying(windowFocused && game.state() != GameModel.State.PAUSED);
+        refreshMusicButton();
+    }
+
+    private void refreshMusicButton() {
+        boolean unavailable = music.status() == BackgroundMusic.Status.UNAVAILABLE;
+        musicToggle.setEnabled(!unavailable && music.status() != BackgroundMusic.Status.CLOSED);
+        musicToggle.setText(unavailable ? "音乐不可用" : music.isEnabled() ? "音乐：开" : "音乐：关");
+        musicToggle.setToolTipText(unavailable ? "音频或输出设备暂不可用，游戏仍可正常游玩"
+                : "A Walk in the Woods · 按 M 开关，暂停或切换窗口时暂停播放");
     }
 
     private void refresh() {
@@ -261,6 +292,7 @@ public final class SnakeGame extends JPanel {
             timer.stop();
         }
         board.repaint();
+        refreshMusicPlayback();
     }
 
     private static Path findHome() {

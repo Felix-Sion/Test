@@ -35,10 +35,15 @@ run.cmd
 | 方向键 / W A S D | 控制方向；待开始时也可直接开始 |
 | Enter / 空格 | 开始、暂停、继续；游戏结束后再来一局 |
 | R | 立即重新开始 |
+| M | 开启 / 关闭背景音乐 |
 
 吃到一颗食物加 10 分、蛇身增长一格，速度会逐步提高。撞墙或撞到自己的身体，本局结束。蛇不能直接掉头。填满棋盘即通关。
 
 界面可以选择悠闲、标准、挑战三种难度。每局开始后难度固定，暂停时也不能变更；本局结束后可以选择下一局的难度。切换到其他窗口时会自动暂停，回来后按空格继续。
+
+背景音乐使用项目中的 **A Walk in the Woods.mp3**，窗口打开后循环播放。可以点击“音乐：开 / 关”按钮或按 **M** 键切换。暂停游戏、切换窗口时音乐暂停，继续游戏时从原位置恢复；关闭游戏时释放音频设备。音频载入在后台进行，音频设备不可用时游戏仍可正常运行。
+
+音乐已转换为 Java 原生支持的 PCM 音频，放在 `resources/audio/background.wav` 并内置于 JAR 和 EXE，无需第三方 Java 音频库。原始 MP3 留在本地。
 
 界面同时显示三种难度各自的前三名，按得分从高到低排列。游戏结束、按 R 重开或关闭窗口时登记本局成绩，每局只登记一次。不同对局的同分成绩可以分别占位，0 分不入榜。
 
@@ -50,9 +55,12 @@ run.cmd
 - `src/snake/Difficulty.java`：三种难度及对应速度。
 - `src/snake/GameSession.java`：每局结算、难度固定与防止重复登记。
 - `src/snake/ScoreBoard.java`：三组前三名的保存与读取。
+- `src/snake/BackgroundMusic.java`：异步载入、循环播放、暂停和静音。
+- `resources/audio/background.wav`：内置背景音乐。
 - `src/snake/GameModel.java`：移动、食物、计分、碰撞等游戏规则。
 - `tests/snake/GameModelTest.java`：无需额外框架的游戏规则测试。
 - `tests/snake/ScoreBoardTest.java`：分难度排名、存档、对局结算等测试。
+- `tests/snake/BackgroundMusicTest.java`：音频资源、循环、静音、异步关闭和设备异常测试。
 - `SnakeGame.jar`：可运行的游戏包。
 - `build.cmd` / `run.cmd`：Windows 编译与启动脚本。
 - `build-exe.cmd`：生成 Windows x64 EXE 免安装版与完整 ZIP。

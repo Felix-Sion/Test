@@ -32,7 +32,7 @@ echo Creating a bundled Java runtime...
 if errorlevel 1 goto :failed
 
 echo Creating SnakeGame.exe...
-"%JAVA_HOME%\bin\jpackage.exe" --type app-image --name SnakeGame --app-version 1.1.0 --vendor "Snake Arcade" --description "Snake Arcade desktop game" --input "%WORK%\input" --main-jar SnakeGame.jar --main-class snake.SnakeGame --runtime-image "%WORK%\runtime" --java-options "-Dsnake.home=$APPDIR/.." --dest "%DEST%"
+"%JAVA_HOME%\bin\jpackage.exe" --type app-image --name SnakeGame --app-version 1.2.0 --vendor "Snake Arcade" --description "Snake Arcade desktop game" --input "%WORK%\input" --main-jar SnakeGame.jar --main-class snake.SnakeGame --runtime-image "%WORK%\runtime" --java-options "-Dsnake.home=$APPDIR/.." --dest "%DEST%"
 if errorlevel 1 goto :failed
 
 set "SNAKE_IMAGE=%DEST%\SnakeGame"
