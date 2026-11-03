@@ -8,5 +8,3 @@
 .gitignore text eol=lf
 .gitattributes text eol=lf
 *.wav binary
-*.c text eol=lf
-*.S text eol=lf
