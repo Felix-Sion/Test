@@ -15,6 +15,10 @@ if errorlevel 1 goto :failed
 
 :package
 if not exist "%~dp0SnakeGame.jar" goto :failed
+if not exist "%~dp0native\windows-x64\snakepatch.dll" (
+  echo Build the native DLL with build-native.cmd before packaging.
+  goto :failed
+)
 set "BUILD_ID=%RANDOM%-%RANDOM%"
 set "WORK=%~dp0out\packaging\%BUILD_ID%"
 set "DEST=%~dp0dist"
@@ -32,11 +36,14 @@ echo Creating a bundled Java runtime...
 if errorlevel 1 goto :failed
 
 echo Creating SnakeGame.exe...
-"%JAVA_HOME%\bin\jpackage.exe" --type app-image --name SnakeGame --app-version 1.2.0 --vendor "Snake Arcade" --description "Snake Arcade desktop game" --input "%WORK%\input" --main-jar SnakeGame.jar --main-class snake.SnakeGame --runtime-image "%WORK%\runtime" --java-options "-Dsnake.home=$APPDIR/.." --dest "%DEST%"
+"%JAVA_HOME%\bin\jpackage.exe" --type app-image --name SnakeGame --app-version 1.3.0 --vendor "Snake Arcade" --description "Snake Arcade desktop game" --input "%WORK%\input" --main-jar SnakeGame.jar --main-class snake.SnakeGame --runtime-image "%WORK%\runtime" --java-options "-Dsnake.home=$APPDIR/.." --dest "%DEST%"
 if errorlevel 1 goto :failed
 
 set "SNAKE_IMAGE=%DEST%\SnakeGame"
 set "SNAKE_ZIP=%DEST%\SnakeGame-Windows-x64.zip"
+mkdir "%SNAKE_IMAGE%\native\windows-x64"
+copy /y "%~dp0native\windows-x64\snakepatch.dll" "%SNAKE_IMAGE%\native\windows-x64\snakepatch.dll" >nul
+if errorlevel 1 goto :failed
 copy /y "%~dp0packaging\README-Windows.txt" "%SNAKE_IMAGE%\README-Windows.txt" >nul
 if errorlevel 1 goto :failed
 set "PROFILE=%~dp0dist\SnakeGame\data"

@@ -4,6 +4,7 @@
 /*.jar
 /*.mp3
 *.class
+/native/windows-x64/
 /.idea/*
 !/.idea/encodings.xml
 !/.idea/misc.xml

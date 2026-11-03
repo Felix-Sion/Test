@@ -8,7 +8,7 @@ import java.awt.geom.RoundRectangle2D;
 import java.nio.file.*;
 import java.util.List;
 
-/** 程序入口：只使用 Java 自带的 Swing，无需安装第三方依赖。 */
+/** Swing 游戏界面；可选的原生 DLL 用于演示可恢复的机器码热补丁。 */
 public final class SnakeGame extends JPanel {
     private static final Color BACKGROUND = new Color(12, 18, 30);
     private static final Color SURFACE = new Color(20, 30, 47);
@@ -29,14 +29,18 @@ public final class SnakeGame extends JPanel {
     private final JButton play = new ArcadeButton("开始游戏", true);
     private final JButton restart = new ArcadeButton("重新开始", false);
     private final JButton musicToggle = new ArcadeButton("音乐：开", false);
+    private final JButton patchToggle = new ArcadeButton("应用补丁 [F8]", false);
+    private final JLabel patchStatus = label("", 12, MUTED);
     private final JComboBox<Difficulty> speed = new JComboBox<>(Difficulty.values());
     private final Board board = new Board();
     private final Timer timer;
     private final BackgroundMusic music;
+    private final NativeColorPatch nativePatch;
     private boolean windowFocused;
     private SnakeGame(Path home) {
         scores = new ScoreBoard(home);
         session = new GameSession(game, scores);
+        nativePatch = new NativeColorPatch(home);
         music = new BackgroundMusic(() -> SwingUtilities.invokeLater(this::refreshMusicButton));
         setBackground(BACKGROUND);
         setBorder(BorderFactory.createEmptyBorder(22, 24, 20, 24));
@@ -50,6 +54,7 @@ public final class SnakeGame extends JPanel {
         play.addActionListener(event -> togglePlay());
         restart.addActionListener(event -> newGame());
         musicToggle.addActionListener(event -> toggleMusic());
+        patchToggle.addActionListener(event -> toggleNativePatch());
         speed.addActionListener(event -> {
             Difficulty selected = (Difficulty) speed.getSelectedItem();
             if (!session.setDifficulty(selected) && selected != session.difficulty()) {
@@ -90,6 +95,7 @@ public final class SnakeGame extends JPanel {
             window.addWindowListener(new WindowAdapter() {
                 @Override public void windowClosing(WindowEvent event) {
                     content.session.finishRound();
+                    content.nativePatch.setApplied(false);
                     content.music.close();
                 }
             });
@@ -186,6 +192,17 @@ public final class SnakeGame extends JPanel {
         actions.add(buttons, BorderLayout.EAST);
         footer.add(actions, BorderLayout.NORTH);
 
+        JPanel patchRow = transparent(new BorderLayout(8, 0));
+        patchRow.setBorder(BorderFactory.createEmptyBorder(8, 0, 2, 0));
+        patchRow.add(patchStatus, BorderLayout.CENTER);
+        JPanel patchButtons = transparent(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        JButton patchDetails = new ArcadeButton("查看机器码", false);
+        patchDetails.addActionListener(event -> showPatchDetails());
+        patchButtons.add(patchDetails);
+        patchButtons.add(patchToggle);
+        patchRow.add(patchButtons, BorderLayout.EAST);
+        footer.add(patchRow, BorderLayout.CENTER);
+
         JPanel help = transparent(new GridLayout(2, 1, 0, 5));
         help.add(label("方向键 / WASD 移动   ·   空格 暂停   ·   Enter 开始   ·   R 重开   ·   M 音乐", 12, MUTED));
         help.add(status);
@@ -206,6 +223,7 @@ public final class SnakeGame extends JPanel {
         bind("ENTER", this::togglePlay);
         bind("R", this::newGame);
         bind("M", this::toggleMusic);
+        bind("F8", this::toggleNativePatch);
     }
 
     private void bind(String key, Runnable action) {
@@ -239,6 +257,34 @@ public final class SnakeGame extends JPanel {
     private void toggleMusic() {
         music.setEnabled(!music.isEnabled());
         refreshMusicButton();
+    }
+
+    private void toggleNativePatch() {
+        nativePatch.toggle();
+        refreshNativePatch();
+        board.repaint();
+    }
+
+    private void refreshNativePatch() {
+        NativeColorPatch.Snapshot current = nativePatch.snapshot();
+        boolean applied = current != null && current.applied();
+        patchToggle.setEnabled(nativePatch.available());
+        patchToggle.setText(applied ? "恢复原始 [F8]" : "应用补丁 [F8]");
+        patchStatus.setText(!nativePatch.error().isEmpty() ? "原生补丁：不可用，点击查看机器码了解原因"
+                : applied ? "原生热补丁：已应用 · 紫色" : "原生热补丁：原始 · 薄荷绿");
+        patchStatus.setForeground(applied ? new Color(NativeColorPatch.PATCHED_RGB) : MUTED);
+        patchStatus.setToolTipText(nativePatch.error().isEmpty()
+                ? "F8 修改 / 恢复原生函数入口，运行中的游戏立即变色" : nativePatch.error());
+    }
+
+    private void showPatchDetails() {
+        JTextArea details = new JTextArea(nativePatch.describe());
+        details.setEditable(false);
+        details.setFont(new Font(FONT, Font.PLAIN, 13));
+        details.setCaretPosition(0);
+        JScrollPane scroll = new JScrollPane(details);
+        scroll.setPreferredSize(new Dimension(740, 390));
+        JOptionPane.showMessageDialog(this, scroll, "原生函数入口 · 实时机器码", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void refreshMusicPlayback() {
@@ -292,6 +338,7 @@ public final class SnakeGame extends JPanel {
             timer.stop();
         }
         board.repaint();
+        refreshNativePatch();
         refreshMusicPlayback();
     }
 
@@ -368,11 +415,13 @@ public final class SnakeGame extends JPanel {
 
         private void drawSnake(Graphics2D g, double x, double y, double cell) {
             List<GameModel.Cell> body = game.snake();
+            Color nativeColor = new Color(nativePatch.colorRgb());
             for (int index = body.size() - 1; index >= 0; index--) {
                 GameModel.Cell part = body.get(index);
                 double progress = 1.0 - (double) index / body.size();
-                g.setColor(index == 0 ? MINT : new Color(39 + (int) (35 * progress),
-                        123 + (int) (85 * progress), 112 + (int) (48 * progress)));
+                double brightness = .50 + .40 * progress;
+                g.setColor(index == 0 ? nativeColor : new Color((int) (nativeColor.getRed() * brightness),
+                        (int) (nativeColor.getGreen() * brightness), (int) (nativeColor.getBlue() * brightness)));
                 g.fill(new RoundRectangle2D.Double(x + part.x() * cell + 1.5,
                         y + part.y() * cell + 1.5, cell - 3, cell - 3, 7, 7));
             }
